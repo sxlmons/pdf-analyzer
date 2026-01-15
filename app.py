@@ -2,6 +2,7 @@ import os
 from io import BytesIO
 
 from flask import Flask, request, render_template, session
+from flask_session import Session
 from dotenv import load_dotenv
 import google.generativeai as genai
 from pypdf import PdfReader
@@ -14,7 +15,13 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Initialize Flask app
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # Required for session management
+
+# Configure server-side sessions (filesystem instead of cookies)
+app.config["SESSION_TYPE"] = "filesystem"
+app.config["SESSION_FILE_DIR"] = ".flask_sessions"  # Where session files are stored
+app.config["SESSION_PERMANENT"] = False
+app.config["SECRET_KEY"] = os.urandom(24)
+Session(app)
 
 # Hidden system prompt - user never sees this but it shapes all responses
 SYSTEM_PROMPT = """You are an advanced PhD-level specialist with expertise across multiple academic disciplines. 
