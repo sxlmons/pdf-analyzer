@@ -13,7 +13,7 @@ A simple AI-powered document analysis tool. Upload a PDF and chat with it using 
 
 1. Clone the repo:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/pdf-analyzer.git
+   git clone https://github.com/sxlmons/pdf-analyzer.git
    cd pdf-analyzer
    ```
 
