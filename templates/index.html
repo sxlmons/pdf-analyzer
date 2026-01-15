@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Analyzer</title>
+    <!-- Marked.js for markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            line-height: 1.6;
+            background: #fafafa;
+        }
+        h1 {
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .error {
+            color: red;
+            margin: 20px 0;
+            padding: 10px;
+            background: #fee;
+            border-radius: 4px;
+        }
+
+        /* Upload form */
+        .upload-form {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .upload-form input[type="file"] {
+            margin: 10px 0;
+        }
+
+        /* Chat container */
+        .chat-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .chat-header {
+            background: #f5f5f5;
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chat-header .filename {
+            font-weight: 500;
+            color: #333;
+        }
+        .chat-messages {
+            padding: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .message {
+            margin-bottom: 20px;
+        }
+        .message:last-child {
+            margin-bottom: 0;
+        }
+        .message-role {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            color: #666;
+        }
+        .message.user .message-role {
+            color: #2563eb;
+        }
+        .message.assistant .message-role {
+            color: #059669;
+        }
+        .message-content {
+            background: #f9f9f9;
+            padding: 12px 16px;
+            border-radius: 8px;
+        }
+        .message.user .message-content {
+            background: #eff6ff;
+        }
+        /* Markdown content styling */
+        .message-content h1, .message-content h2, .message-content h3 {
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+        }
+        .message-content h1:first-child,
+        .message-content h2:first-child,
+        .message-content h3:first-child {
+            margin-top: 0;
+        }
+        .message-content p {
+            margin: 0.5em 0;
+        }
+        .message-content p:first-child {
+            margin-top: 0;
+        }
+        .message-content p:last-child {
+            margin-bottom: 0;
+        }
+        .message-content ul, .message-content ol {
+            margin: 0.5em 0;
+            padding-left: 1.5em;
+        }
+        .message-content code {
+            background: #e5e5e5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        .message-content pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        .message-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .message-content blockquote {
+            border-left: 3px solid #ddd;
+            margin: 0.5em 0;
+            padding-left: 1em;
+            color: #666;
+        }
+
+        /* Chat input */
+        .chat-input {
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+            background: #f9f9f9;
+        }
+        .chat-input form {
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input input[type="text"] {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .chat-input input[type="text"]:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
+        /* Buttons */
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+        .btn-secondary {
+            background: #e5e5e5;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background: #d4d4d4;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>PDF Analyzer</h1>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if not has_document %}
+        <!-- Upload Form - shown when no document is loaded -->
+        <p class="subtitle">Upload a PDF to start chatting about it</p>
+        <div class="upload-form">
+            <form action="/upload" method="POST" enctype="multipart/form-data">
+                <label for="pdf">Select a PDF file:</label><br>
+                <input type="file" name="pdf" id="pdf" accept=".pdf">
+                <br><br>
+                <button type="submit" class="btn-primary">Upload & Start</button>
+            </form>
+        </div>
+    {% else %}
+        <!-- Chat Interface - shown when document is loaded -->
+        <p class="subtitle">Ask questions about your document</p>
+        <div class="chat-container">
+            <div class="chat-header">
+                <span class="filename">📄 {{ filename }}</span>
+                <form action="/reset" method="POST" style="margin: 0;">
+                    <button type="submit" class="btn-secondary">Upload New PDF</button>
+                </form>
+            </div>
+
+            <div class="chat-messages" id="chat-messages">
+                {% if chat_history %}
+                    {% for msg in chat_history %}
+                        <div class="message {{ msg.role }}">
+                            <div class="message-role">{{ "You" if msg.role == "user" else "Assistant" }}</div>
+                            <div class="message-content" {% if msg.role == "assistant" %}data-markdown="{{ msg.content | e }}"{% endif %}>
+                                {% if msg.role == "user" %}
+                                    {{ msg.content }}
+                                {% else %}
+                                    <!-- Will be rendered as markdown by JS -->
+                                    {{ msg.content }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <p>No messages yet. Ask a question about your document!</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="chat-input">
+                <form action="/chat" method="POST">
+                    <input type="text" name="question" placeholder="Ask a question about the document..." autocomplete="off" autofocus>
+                    <button type="submit" class="btn-primary">Send</button>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+
+    <script>
+        // Render markdown for all assistant messages
+        document.addEventListener('DOMContentLoaded', function() {
+            const assistantMessages = document.querySelectorAll('.message.assistant .message-content');
+            assistantMessages.forEach(function(el) {
+                const markdown = el.getAttribute('data-markdown');
+                if (markdown) {
+                    // Decode HTML entities and render markdown
+                    const decoded = new DOMParser().parseFromString(markdown, 'text/html').body.textContent;
+                    el.innerHTML = marked.parse(decoded);
+                } else {
+                    // Fallback: render existing text content as markdown
+                    el.innerHTML = marked.parse(el.textContent);
+                }
+            });
+
+            // Scroll chat to bottom
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>
