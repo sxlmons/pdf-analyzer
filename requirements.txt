@@ -1,3 +1,5 @@
+reportlab
+pytest
 flask
 flask-session
 pypdf
